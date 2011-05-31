@@ -18,7 +18,7 @@ function uc_attribute_stock_schema() {
         'type' => 'serial',
         'unsigned' => TRUE,
         'not null' => TRUE,
-	    ),
+      ),
       'nid' => array(
         'description' => 'The product {node}.nid.',
         'type' => 'int',
@@ -26,7 +26,7 @@ function uc_attribute_stock_schema() {
         'not null' => TRUE,
         'default' => 0,
       ),      
-			'active' => array(
+      'active' => array(
         'description' => 'Boolean flag indicating whether stock is being tracked for this product. 1 => Yes. 0 => No.',
         'type' => 'int',
         'size' => 'tiny',
