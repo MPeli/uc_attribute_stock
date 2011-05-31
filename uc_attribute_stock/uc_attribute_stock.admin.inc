@@ -1,5 +1,12 @@
 <?php
-  
+/**
+ * @file
+ * Fieldgroup module.
+ *
+ * For an overview of all php and javascript hooks, see uc_attribute_stock.module.php.
+ *
+ */
+   
 function uc_attribute_stock_ajax($nid) {
   $data = get_attributes($nid);
   #print_r($data);
@@ -97,10 +104,10 @@ function uc_attribute_stock_form($form, &$form_state, $node) {
       );
 
       
-      foreach($options as $key => $value) {
+      foreach ($options as $key => $value) {
         $select_options[''] = t('Please select');
         $aid = $key;
-        foreach($value as $k => $v) {
+        foreach ($value as $k => $v) {
           $select_options[$v['oid']] = t($v['name']);
         }
         $form['table']['body'][$i]['atributes'][$aid] = array(
@@ -141,7 +148,7 @@ function uc_attribute_stock_form($form, &$form_state, $node) {
 
 
     $x = $i + 10;
-    for($i; $i < $x; $i++) {
+    for ($i; $i < $x; $i++) {
       $form['table']['body'][$i] = array(
         '#prefix' => '<tr>',
         '#suffix' => '</tr>',
@@ -154,10 +161,10 @@ function uc_attribute_stock_form($form, &$form_state, $node) {
       );
 
       
-      foreach($options as $key => $value) {
+      foreach ($options as $key => $value) {
         $select_options[''] = t('Please select');
         $aid = $key;
-        foreach($value as $k => $v) {
+        foreach ($value as $k => $v) {
           $select_options[$v['oid']] = t($v['name']);
         }
         
@@ -233,16 +240,16 @@ function uc_attribute_stock_form_submit($form, &$form_state) {
   
   foreach ($form_state['values']['body'] as $value) {
     
-    foreach($value['atributes'] as $aid => $oid) {
+    foreach ($value['atributes'] as $aid => $oid) {
         $comb_array[$aid] = $oid;
     }
     $combination = serialize($comb_array);
     
-    if($value['uas_id']) {
+    if ($value['uas_id']) {
       if ($value['active'] == 1) {
-        $val = db_query("SELECT * FROM {uc_attribute_stock} AS uac WHERE combination = :comb AND id != :id", array(':comb' => $combination, ':id' => $value['uas_id']))->fetchAll();
+        $val = db_query("SELECT * FROM {uc_attribute_stock} AS uac WHERE combination = :comb AND id <> :id", array(':comb' => $combination, ':id' => $value['uas_id']))->fetchAll();
         
-        if(count($val) == 0) {
+        if (count($val) == 0) {
           db_update('uc_attribute_stock')
             ->fields(array(
               'combination' => $combination,
