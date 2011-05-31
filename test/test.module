@@ -1,0 +1,94 @@
+<?php
+// $Id: uc_price_per_role.module,v 1.10 2010/10/23 21:34:22 longwave Exp $
+
+/**
+ * Implements hook_permission().
+ */
+function test_permission() {
+  return array(
+    'administer test' => array(
+      'title' => t('access price selection block'),
+      'description' => t('Allows a user to configure...'),
+    ),
+  );
+}
+
+/**
+ * Implements hook_menu().
+ */
+function test_menu() {
+  $items = array();
+
+  $items['admin/store/settings/price_per_role'] = array(
+    'title' => 'Test',
+    'description' => 'test.',
+    'access arguments' => array('administer test'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('test_form'),
+    'type' => MENU_NORMAL_ITEM,
+  );
+
+  $items['admin/store/settings/price_per_role/delete/%'] = array(
+    'title' => 'Test',
+    'description' => 'test.',
+    'access arguments' => array('administer test'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('test_delete_form', 4),
+    'type' => MENU_NORMAL_ITEM,
+  );
+
+  return $items;
+}
+
+function test_delete_form($form, &$form_state, $values) {
+	print_r($values);
+
+  $form['search']['name'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Description/Name'),
+    '#default_value' => print_r($values),
+  );
+  return $form;
+}
+ 
+/**
+ * Implements hook_theme().
+ */
+function test_theme() {
+  return array(
+    'test_form' =>  array(
+      'file' => 'test.module',
+      'render element' => 'form'      
+    ),
+  );
+}
+
+function test_form() {
+
+
+  $form['fields']['#tree'] = TRUE;
+  return $form;
+}
+
+function theme_test_form($variables) {
+  $form = $variables['form'];
+  
+  $output = '<p>' . t('Enable roles that require separate pricing. For users with more than one matching role, the lightest weight role that has a price available will be used.') . '</p>';
+  
+  $header = array(t('Enable'), t('Role'), t('Weight'));
+  $rows = array();
+  foreach (element_children($form['fields']) as $field) {
+    $row = array();
+    $row[] = drupal_render($form['fields'][$field]['enabled']);
+    $row[] = drupal_render($form['fields'][$field]['role']);
+    $row[] = drupal_render($form['fields'][$field]['weight']);
+    $rows[] = array('data' => $row, 'class' => array('draggable'));
+  }
+  
+  drupal_add_tabledrag('uc-price-per-roles', 'order', 'sibling', 'role-weight');
+  $output .= theme('table', array('header' => $header, 'rows' => $rows, 'attributes' => array('id' => 'uc-price-per-roles')));
+
+  $output .= drupal_render_children($form);
+
+  return $output;
+}
