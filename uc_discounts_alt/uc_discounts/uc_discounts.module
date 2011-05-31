@@ -1,0 +1,218 @@
+<?php
+//$Id: uc_discounts.module,v 1.29.2.31 2010/12/30 19:37:21 jrust Exp $
+
+
+/**
+ * @file
+ * Discounts module for Ubercart 3.0+.
+ *
+ * Allows discount rules to be set up and applied to orders.
+ */
+module_load_include('inc', 'uc_discounts', 'uc_discounts.ca');
+
+define("QUALIFYING_TYPE_MINIMUM_PRICE", 1);
+define("QUALIFYING_TYPE_MINIMUM_QUANTITY", 2);
+
+define("DISCOUNT_TYPE_FREE_ITEMS", 1);
+define("DISCOUNT_TYPE_PERCENTAGE_OFF", 2);
+define("DISCOUNT_TYPE_FIXED_AMOUNT_OFF", 3);
+define("DISCOUNT_TYPE_FIXED_AMOUNT_OFF_PER_QUALIFYING_ITEM", 4);
+define("DISCOUNT_TYPE_PERCENTAGE_OFF_PER_QUALIFYING_ITEM", 5);
+
+define("FILTER_TYPE_PRODUCTS", 1);
+define("FILTER_TYPE_TERMS", 2);
+define("FILTER_TYPE_SKUS", 3);
+define("FILTER_TYPE_CLASS", 4);
+
+define("ALL_PRODUCTS", "-1");
+define("ALL_TERMS", "-1");
+define("ALL_SKUS", "");
+define("ALL_CLASSES", "");
+define("ALL_ROLES", "-1");
+
+define("IS_ACTIVE", TRUE);
+
+define("LINE_ITEM_KEY_NAME", "uc_discounts");
+// (1 to follow subtotal)
+define("LINE_ITEM_WEIGHT", 1);
+define("CALCULATE_DISCOUNT_RESPONSE_LINE_ITEMS_KEY", "line_items");
+define("CALCULATE_DISCOUNT_RESPONSE_ERRORS_KEY", "errors");
+define("CALCULATE_DISCOUNT_RESPONSE_MESSAGES_KEY", "messages");
+
+
+///////////////////////////////////////////////////////////////////
+//Drupal Hooks
+///////////////////////////////////////////////////////////////////
+
+/**
+ * Implementation of hook_init().
+ */
+function uc_discounts_init() {
+  drupal_add_css(drupal_get_path('module', 'uc_discounts')  . '/uc_discounts.css');
+}
+
+/**
+ * Implements hook_permission().
+ */
+function uc_discounts_permission() {
+  return array(
+    'administer discounts' => array(
+      'title' => t('configure discounts'),
+      'description' => t('Allows a user to configure...'),
+    ),
+  );
+}
+
+/**
+ * Implementation of hook_menu().
+ */
+function uc_discounts_menu() {
+  $items = array();
+
+  $items['admin/store/settings/uc_discounts'] = array(
+    'title' => 'Discounts',
+    'description' => 'Add and review discounts.',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('uc_discounts_admin_list'),
+    'access arguments' => array('configure discounts'),
+    'type' => MENU_NORMAL_ITEM,
+    'file' => 'uc_discounts.admin.inc',
+  );
+	
+  $items['admin/store/settings/uc_discounts/list'] = array(
+    'title' => 'List',
+    'description' => 'View list of discounts.',
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+    'weight' => 0,
+  );
+  $items['admin/store/settings/uc_discounts/add'] = array(
+    'title' => 'Add discount',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('uc_discounts_form'),
+    'access arguments' => array('configure discounts'),
+    'type' => MENU_LOCAL_TASK,
+    'weight' => 1,
+    'file' => 'uc_discounts.admin.inc',
+  );
+  $items['admin/store/settings/uc_discounts/edit/%'] = array(
+    'title' => 'Edit discount rule',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('uc_discounts_form', 4),
+    'access arguments' => array('configure discounts'),
+    'type' => MENU_CALLBACK,
+    'file' => 'uc_discounts.admin.inc',
+  );
+  $items['admin/store/settings/uc_discounts/copy/%'] = array(
+    'page callback' => 'uc_discounts_copy',
+    'page arguments' => array(4),
+    'access arguments' => array('configure discounts'),
+    'type' => MENU_CALLBACK,
+    'file' => 'uc_discounts.admin.inc',
+  );
+  $items['admin/store/settings/uc_discounts/delete/%'] = array(
+    'title' => 'Delete discount rule',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('uc_discounts_delete', 4),
+    'access arguments' => array('configure discounts'),
+    'type' => MENU_CALLBACK,
+    'file' => 'uc_discounts.admin.inc',
+  );
+  $items['admin/store/settings/uc_discounts/generate_codes/%'] = array(
+    'title' => 'Generate codes',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('uc_discounts_generate_codes_form', 4),
+    'access arguments' => array('configure discounts'),
+    'type' => MENU_CALLBACK,
+    'file' => 'uc_discounts.admin.inc',
+    'weight' => 2,
+  );
+  $items['cart/checkout/uc_discounts/calculate'] = array(
+    'page callback' => 'uc_discounts_js_calculate',
+    'access arguments' => array('access content'),
+    'type' => MENU_CALLBACK,
+  );
+  $items['admin/reports/uc_discounts/all'] = array(
+    'title' => 'Ubercart discounts usage data',
+    'description' => 'View usage data for each Ubercart discount.',
+    'page callback' => 'uc_discounts_report',
+    'access arguments' => array('access site reports'),
+    'file' => 'uc_discounts.admin.inc',
+  );
+  $items['admin/reports/uc_discounts/all/download'] = array(
+    'title' => 'Download Ubercart discounts usage data',
+    'description' => 'Download usage data for each Ubercart discount.',
+    'page callback' => 'uc_discounts_report',
+    'access arguments' => array('access site reports'),
+    'file' => 'uc_discounts.admin.inc',
+    'type' => MENU_CALLBACK,
+  );
+  $items['admin/reports/uc_discounts/discount'] = array(
+    'title' => 'Ubercart discount usage data',
+    'page callback' => 'uc_discounts_report_for_discount',
+    'access arguments' => array('access site reports'),
+    'type' => MENU_CALLBACK,
+    'file' => 'uc_discounts.admin.inc',
+  );
+
+  return $items;
+}
+
+/**
+ * Returns an array of qualifying types with descriptions.
+ */
+function qualifying_type_options() {
+  static $options = NULL;
+
+  if (is_null($options)) {
+    $options = array(QUALIFYING_TYPE_MINIMUM_PRICE => t("Minimum price"),
+      QUALIFYING_TYPE_MINIMUM_QUANTITY => t("Minimum quantity"),
+    );
+  }
+
+  return $options;
+}
+
+function qualifying_type_name($qualifying_type) {
+  $options = qualifying_type_options();
+  return $options[$qualifying_type];
+}
+
+/**
+ * Returns an array of discount types with descriptions.
+ */
+function discount_type_options() {
+  static $options = NULL;
+
+  if (is_null($options)) {
+    $options = array(
+      DISCOUNT_TYPE_PERCENTAGE_OFF => t("Percentage off"),
+      DISCOUNT_TYPE_PERCENTAGE_OFF_PER_QUALIFYING_ITEM => t("Percentage off per qualifying item"),
+      DISCOUNT_TYPE_FIXED_AMOUNT_OFF => t("Fixed amount off"),
+      DISCOUNT_TYPE_FIXED_AMOUNT_OFF_PER_QUALIFYING_ITEM => t("Fixed amount off per qualifying item"),
+      DISCOUNT_TYPE_FREE_ITEMS => t("Free items"),
+    );
+  }
+
+  return $options;
+}
+
+function discount_type_name($discount_type) {
+  $options = discount_type_options();
+  return $options[$discount_type];
+}
+
+function discount_amount_formatted($discount) {
+  if (in_array($discount->discount_type, array(DISCOUNT_TYPE_PERCENTAGE_OFF, DISCOUNT_TYPE_PERCENTAGE_OFF_PER_QUALIFYING_ITEM))) {
+    return ($discount->discount_amount * 100) . '%';
+  }
+  elseif (in_array($discount->discount_type, array(DISCOUNT_TYPE_FIXED_AMOUNT_OFF, DISCOUNT_TYPE_FIXED_AMOUNT_OFF_PER_QUALIFYING_ITEM))) {
+    return uc_currency_format($discount->discount_amount);
+  }
+  else {
+    return $discount->discount_amount;
+  }
+}
+
+function uc_discounts_add_to_existing_map_number_value(&$a, $key, $value) {
+  $a[$key] = (array_key_exists($key, $a)) ? $a[$key] + $value : $value;
+}

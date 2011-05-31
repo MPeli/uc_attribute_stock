@@ -1,0 +1,14 @@
+name = Discounts
+description = Defines Ubercart discount based on user-defined codes.
+dependencies[] = uc_store
+dependencies[] = uc_product
+package = "Ubercart - core (optional)"
+core = 7.x
+
+
+; Information added by drupal.org packaging script on 2011-05-06
+version = "7.x-2.2"
+core = "7.x"
+project = "uc_discounts_alt"
+datestamp = "1304706417"
+
